@@ -1,3 +1,47 @@
+#[macro_export]
+macro_rules! mem_access_b {
+    ($func:expr, $address:expr) => {
+        {
+        let result = $func.get_b($address);
+        match result {
+            None => panic!("Failed memory access at {:?}", stringify!($address)),
+            Some(r) => r
+        }
+        }
+    };
+    ($func:expr, $address:expr, $val:expr) => {
+        {
+        let result = $func.set_b($address, $val);
+        match result {
+            None => panic!("Falied memory access at {:?}", stringify!($address)),
+            Some(r) => r
+        }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! mem_access_w {
+    ($func:expr, $address:expr) => {
+        {
+        let result = $func.get_w($address);
+        match result {
+            None => panic!("Failed memory access at {:?}", stringify!($address)),
+            Some(r) => r
+        }
+        }
+    };
+    ($func:expr, $address:expr, $val:expr) => {
+        {
+        let result = $func.set_w($address, $val);
+        match result {
+            None => panic!("Failed memory access at {:?}", stringify!($address)),
+            Some(r) => r
+        }
+        }
+    }
+}
+
 pub struct MMU {
     mem: Vec<u8>
 }

@@ -22,8 +22,5 @@ fn main() {
     let mut processor = cpu::Z80::new(memory_unit);
 
     println!("{}", processor.test());
-
-    let i = processor.run();
-
-    println!("{}", i);
+    
 }
