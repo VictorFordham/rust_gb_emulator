@@ -118,7 +118,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| {}, //DECr_d
     |cpu: &mut Z80| {}, //LDrn_d
     |cpu: &mut Z80| {}, //RLA
-    |cpu: &mut Z80| {}, //JRn
+    |cpu: &mut Z80| {
+        let offset = mem_access_b!(Z80.memory_unit, Z80.pc);
+        Z80.pc += 1;
+        Z80.pc = (Z80.pc as i16 + (offset as i8) as i16) as u16;
+        Z80.last_m = 3; Z80.last_t = 12;
+    }, //JRn
     |cpu: &mut Z80| {}, //ADDHLDE
     |cpu: &mut Z80| { //LDADEm
         let mut address: usize = cpu.d as usize;
@@ -316,7 +321,14 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| {}, //CPr_a
 
     //c0
-    |cpu: &mut Z80| {}, //RETNZ
+    |cpu: &mut Z80| {
+        Z80.last_m = 1; Z80.last_t = 4;
+        if Z80.f & 0x80 == 00 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp);
+            Z80.sp = Z80.sp.wrapping_add(2);
+            Z80.last_m += 2; Z80.last_t += 8;
+        }
+    }, //RETNZ
     |cpu: &mut Z80| {
         let value = mem_access_w!(Z80.memory_unit, Z80.sp);
         Z80.sp = Z80.sp.wrapping_add(2);
@@ -335,7 +347,15 @@ static isa_map: [fn(&mut Z80); 256] = [
         Z80.pc = mem_access_w!(cpu.memory_unit, cpu.pc);
         Z80.last_m = 3; Z80.last_t = 12;
     }, //JPnn
-    |cpu: &mut Z80| {}, //CALLNZnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x80 == 0x00 {
+            Z80.sp = Z80.sp.wrapping_sub(2);
+            mem_access_w!(Z80.memory_unit, Z80.sp, Z80.pc.wrapping_add(2));
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+            Z80.last_m += 2; Z80.last_t += 8;
+        } else { Z80.pc = Z80.pc.wrapping_add(2); }
+    }, //CALLNZnn
     |cpu: &mut Z80| {
         Z80.sp = Z80.sp.wrapping_sub(2);
         let value = (Z80.b as u16 << 8) + (Z80.c as u16);
@@ -349,7 +369,14 @@ static isa_map: [fn(&mut Z80); 256] = [
         Z80.pc = 0x00;
         Z80.last_m = 3; Z80.last_t = 12;
     }, //RST00
-    |cpu: &mut Z80| {}, //RETZ
+    |cpu: &mut Z80| {
+        Z80.last_m = 1; Z80.last_t = 4;
+        if Z80.f & 0x80 == 0x80 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp);
+            Z80.sp = Z80.sp.wrapping_add(2);
+            Z80.last_m += 2; Z80.last_t += 8;
+        }
+    }, //RETZ
     |cpu: &mut Z80| {
         Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp); Z80.sp += 2;
         Z80.last_m = 3; Z80.last_t = 12;
@@ -362,8 +389,21 @@ static isa_map: [fn(&mut Z80); 256] = [
         } else { Z80.pc = Z80.pc.wrapping_add(2); }
     }, //JPZnn
     |cpu: &mut Z80| {}, //MAPcb
-    |cpu: &mut Z80| {}, //CALLZnn
-    |cpu: &mut Z80| {}, //CALLnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x80 == 0x80 {
+            Z80.sp = Z80.sp.wrapping_sub(2);
+            mem_access_w!(Z80.memory_unit, Z80.sp, Z80.pc.wrapping_add(2);
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+            Z80.last_m += 2; Z80.last+t += 8;
+        } else { Z80.pc += 2; }
+    }, //CALLZnn
+    |cpu: &mut Z80| {
+        Z80.sp = Z80.sp.wrapping_sub(2);
+        mem_access_w!(Z80.memory_unit, Z80.sp, Z80.pc.wrapping_add(2));
+        Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+        Z80.last_m = 5; Z80.last_t = 20;
+    }, //CALLnn
     |cpu: &mut Z80| {}, //ADCn
     |cpu: &mut Z80| {
         Z80.sp = Z80.sp.wrapping_sub(2);
@@ -373,7 +413,14 @@ static isa_map: [fn(&mut Z80); 256] = [
     }, //RST08
 
     //d0
-    |cpu: &mut Z80| {}, //RETNC
+    |cpu: &mut Z80| {
+        Z80.last_m = 1; Z80.last_t = 4;
+        if Z80.f & 0x10 == 0x00 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp);
+            Z80.sp = Z80.sp.wrapping_add(2);
+            Z80.last_m += 2; Z80.last_t += 8;
+        }
+    }, //RETNC
     |cpu: &mut Z80| {
         let value = mem_access_w!(Z80.memory_unit, Z80.sp);
         Z80.sp = Z80.sp.wrapping_add(2);
@@ -381,9 +428,22 @@ static isa_map: [fn(&mut Z80); 256] = [
         Z80.e = value & 0xff as u8;
         Z80.last_m = 3; Z80.last_t = 12;
     }, //POPDE
-    |cpu: &mut Z80| {}, //JPNCnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x10 == 0x00 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+            Z80.last_m += 1; Z80.last_t += 4;
+        } else { Z80.pc = Z80.pc.wrapping_add(2); }
+    }, //JPNCnn
     |cpu: &mut Z80| { undefined(cpu.pc); },
-    |cpu: &mut Z80| {}, //CALLNCnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x10 == 0x00 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp);
+            Z80.sp = Z80.sp.wrapping_add(2);
+            Z80.last_m += 2; Z80.last_t += 8;
+        }
+    }, //CALLNCnn
     |cpu: &mut Z80| {
         Z80.sp = Z80.sp.wrapping_sub(2);
         let value = (Z80.d as u16 << 8) + (Z80.e as u16);
@@ -397,11 +457,32 @@ static isa_map: [fn(&mut Z80); 256] = [
         Z80.pc = 0x10;
         Z80.last_m = 3; Z80.last_t = 12;
     }, //RST10
-    |cpu: &mut Z80| {}, //RETC
+    |cpu: &mut Z80| {
+        Z80.last_m = 1; Z80.last_t = 4;
+        if Z80.f & 0x10 == 0x10 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.sp);
+            Z80.sp = Z80.sp.wrapping_add(2);
+            Z80.last_m += 2; Z80.last_t += 8;
+        }
+    }, //RETC
     |cpu: &mut Z80| {}, //RETI
-    |cpu: &mut Z80| {}, //JPCnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x10 == 0x10 {
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+            Z80.last_m += 1; Z80.last_t += 4;
+        } else { Z80.pc = Z80.pc.wrapping_add(2); }
+    }, //JPCnn
     |cpu: &mut Z80| { undefined(cpu.pc); },
-    |cpu: &mut Z80| {}, //CALLCnn
+    |cpu: &mut Z80| {
+        Z80.last_m = 3; Z80.last_t = 12;
+        if Z80.f & 0x10 == 0x10 {
+            Z80.sp = Z80.sp.wrapping_sub(2);
+            mem_access_w!(Z80.memory_unit, Z80.sp, Z80.pc.wrapping_add(2));
+            Z80.pc = mem_access_w!(Z80.memory_unit, Z80.pc);
+            Z80.last_m += 2; Z80.last_t += 8;
+        } else { Z80.pc = Z80.pc.wrapping_add(2); }
+    }, //CALLCnn
     |cpu: &mut Z80| { undefined(cpu.pc); },
     |cpu: &mut Z80| {}, //SBCn
     |cpu: &mut Z80| {
