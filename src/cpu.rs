@@ -183,7 +183,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.b = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_be
     |cpu: &mut Z80| { cpu.b = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_bh
     |cpu: &mut Z80| { cpu.b = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_bl
-    |cpu: &mut Z80| {}, //LDrHLm_b
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.b = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8; 
+    }, //LDrHLm_b
     |cpu: &mut Z80| { cpu.b = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //Ldrr_ba
     |cpu: &mut Z80| { cpu.c = cpu.b; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_cb
     |cpu: &mut Z80| { cpu.c = cpu.c; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_cc
@@ -191,7 +196,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.c = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ce
     |cpu: &mut Z80| { cpu.c = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ch
     |cpu: &mut Z80| { cpu.c = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_cl
-    |cpu: &mut Z80| {}, //LDrHLm_c
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.c = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_c
     |cpu: &mut Z80| { cpu.c = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ca
 
     //50
@@ -201,7 +211,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.d = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_de
     |cpu: &mut Z80| { cpu.d = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_dh
     |cpu: &mut Z80| { cpu.d = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_dl
-    |cpu: &mut Z80| {}, //LDrHLm_d
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.d = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_d
     |cpu: &mut Z80| { cpu.d = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_da
     |cpu: &mut Z80| { cpu.e = cpu.b; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_eb
     |cpu: &mut Z80| { cpu.e = cpu.c; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ec
@@ -209,7 +224,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.e = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ee
     |cpu: &mut Z80| { cpu.e = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_eh
     |cpu: &mut Z80| { cpu.e = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_el
-    |cpu: &mut Z80| {}, //LDrHLm_e
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.e = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_e
     |cpu: &mut Z80| { cpu.e = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ea
 
     //60
@@ -219,7 +239,12 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.h = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_he
     |cpu: &mut Z80| { cpu.h = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_hh
     |cpu: &mut Z80| { cpu.h = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_hl
-    |cpu: &mut Z80| {}, //LDrHLm_h
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.h = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_h
     |cpu: &mut Z80| { cpu.h = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ha
     |cpu: &mut Z80| { cpu.l = cpu.b; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_lb
     |cpu: &mut Z80| { cpu.l = cpu.c; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_lc
@@ -227,26 +252,71 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| { cpu.l = cpu.e; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_le
     |cpu: &mut Z80| { cpu.l = cpu.h; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_lh
     |cpu: &mut Z80| { cpu.l = cpu.l; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_ll
-    |cpu: &mut Z80| {}, //LDrHLm_l
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.h = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_l
     |cpu: &mut Z80| { cpu.l = cpu.a; cpu.last_m = 1; cpu.last_t = 4; }, //LDrr_la
 
     //70
-    |cpu: &mut Z80| {}, //LDHLmr_b
-    |cpu: &mut Z80| {}, //LDHLmr_c
-    |cpu: &mut Z80| {}, //LDHLmr_d
-    |cpu: &mut Z80| {}, //LDHLmr_e
-    |cpu: &mut Z80| {}, //LDHLmr_h
-    |cpu: &mut Z80| {}, //LDHLmr_l
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.b);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_b
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.c);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_c
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.d);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_d
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.e);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_e
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.h);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_h
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.l);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_l
     |cpu: &mut Z80| { cpu.halt = true; cpu.last_m = 1; cpu.last_t = 4; }, //halt
-    |cpu: &mut Z80| {}, //LDHLmr_a
-    |cpu: &mut Z80| {}, //LDrr_ab
-    |cpu: &mut Z80| {}, //LDrr_ac
-    |cpu: &mut Z80| {}, //LDrr_ad
-    |cpu: &mut Z80| {}, //LDrr_ae
-    |cpu: &mut Z80| {}, //LDrr_ah
-    |cpu: &mut Z80| {}, //LDrr_al
-    |cpu: &mut Z80| {}, //LDrHLm_a
-    |cpu: &mut Z80| {}, //LDrr_aa
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        mem_access_b!(Z80.memory_unit, address, Z80.a);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDHLmr_a
+    |cpu: &mut Z80| { Z80.a = Z80.b; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_ab
+    |cpu: &mut Z80| { Z80.a = Z80.c; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_ac
+    |cpu: &mut Z80| { Z80.a = Z80.d; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_ad
+    |cpu: &mut Z80| { Z80.a = Z80.e; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_ae
+    |cpu: &mut Z80| { Z80.a = Z80.h; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_ah
+    |cpu: &mut Z80| { Z80.a = Z80.l; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_al
+    |cpu: &mut Z80| {
+        let mut address = Z80.h as u16 << 8;
+        address += Z80.l as u16;
+        Z80.a = mem_access_b!(Z80.memory_unit, address);
+        Z80.last_m = 2; Z80.last_t = 8;
+    }, //LDrHLm_a
+    |cpu: &mut Z80| { Z80.a = Z80.a; Z80.last_m = 1; Z80.last_t = 4; }, //LDrr_aa
 
     //80
     |cpu: &mut Z80| {}, //ADDr_b
