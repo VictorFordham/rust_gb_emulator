@@ -551,26 +551,123 @@ static isa_map: [fn(&mut Z80); 256] = [
         if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //XORr_l
-    |cpu: &mut Z80| {}, //XORHL
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        cpu.a ^= mem_access_b!(cpu.memory_unit, address);
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //XORHL
     |cpu: &mut Z80| { cpu.a ^= cpu.a; cpu.f = ZERO_FLAG; cpu.last_m = 1; cpu.last_t = 4; }, //XORr_a
 
     //b0
-    |cpu: &mut Z80| {}, //ORr_b
-    |cpu: &mut Z80| {}, //ORr_c
-    |cpu: &mut Z80| {}, //ORr_d
-    |cpu: &mut Z80| {}, //ORr_e
-    |cpu: &mut Z80| {}, //ORr_h
-    |cpu: &mut Z80| {}, //ORr_l
-    |cpu: &mut Z80| {}, //ORHL
-    |cpu: &mut Z80| {}, //ORr_a
-    |cpu: &mut Z80| {}, //CPr_b
-    |cpu: &mut Z80| {}, //CPr_c
-    |cpu: &mut Z80| {}, //CPr_d
-    |cpu: &mut Z80| {}, //CPr_e
-    |cpu: &mut Z80| {}, //CPr_h
-    |cpu: &mut Z80| {}, //CPr_l
-    |cpu: &mut Z80| {}, //CPHL
-    |cpu: &mut Z80| {}, //CPr_a
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.b;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_b
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.c;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_c
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.d;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_d
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.e;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_e
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.h;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_h
+    |cpu: &mut Z80| {
+        cpu.a |= cpu.l;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_l
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        cpu.a |= mem_access_b!(cpu.memory_unit, address);
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ORHL
+    |cpu: &mut Z80| {
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ORr_a
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.b);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_b
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.c);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_c
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.d);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_d
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.e);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_e
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.h);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_h
+    |cpu: &mut Z80| {
+        let (i, b) = cpu.a.overflowing_sub(cpu.l);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_l
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        let val = mem_access_b!(cpu.memory_unit, address);
+        let (i, b) = cpu.a.overflowing_sub(val);
+        cpu.f = SUB_FLAG;
+        if i == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //CPHL
+    |cpu: &mut Z80| {
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //CPr_a
 
     //c0
     |cpu: &mut Z80| {
@@ -614,7 +711,15 @@ static isa_map: [fn(&mut Z80); 256] = [
         mem_access_w!(cpu.memory_unit, cpu.sp, value);
         cpu.last_m = 3; cpu.last_t = 12;
     }, //PUSHBC
-    |cpu: &mut Z80| {}, //ADDn
+    |cpu: &mut Z80| {
+        let val = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        let (i, b) = cpu.a.overflowing_add(val);
+        cpu.a = i; cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ADDn
     |cpu: &mut Z80| {
         cpu.sp = cpu.sp.wrapping_sub(2);
         mem_access_w!(cpu.memory_unit, cpu.sp, cpu.pc);
@@ -702,7 +807,15 @@ static isa_map: [fn(&mut Z80); 256] = [
         mem_access_w!(cpu.memory_unit, cpu.sp, value);
         cpu.last_m = 3; cpu.last_t = 12;
     }, //PUSHDE
-    |cpu: &mut Z80| {}, //SUBn
+    |cpu: &mut Z80| {
+        let val = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        let (i, b) = cpu.a.overflowing_sub(val);
+        cpu.a = i; cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //SUBn
     |cpu: &mut Z80| {
         cpu.sp = cpu.sp.wrapping_sub(2);
         mem_access_w!(cpu.memory_unit, cpu.sp, cpu.pc);
@@ -767,7 +880,13 @@ static isa_map: [fn(&mut Z80); 256] = [
         mem_access_w!(cpu.memory_unit, cpu.sp, value);
         cpu.last_m = 3; cpu.last_t = 12;
     }, //PUSHHL
-    |cpu: &mut Z80| {}, //ANDn
+    |cpu: &mut Z80| {
+        cpu.a &= mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ANDn
     |cpu: &mut Z80| {
         cpu.sp = cpu.sp.wrapping_sub(2);
         mem_access_w!(cpu.memory_unit, cpu.sp, cpu.pc);
