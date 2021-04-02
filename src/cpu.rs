@@ -479,7 +479,16 @@ static isa_map: [fn(&mut Z80); 256] = [
         if b { cpu.f |= CARRY_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //ADDr_a
-    |cpu: &mut Z80| {}, //ADCr_b
+    |cpu: &mut Z80| {
+        let mut (val, b1) = cpu.a.overflowing_add(cpu.b);
+        let mut b2: bool = false;
+        if cpu.f & CARRY_FLAG == 0 { (val, b2) = val.overflowing_add(1); }
+        cpu.f = 0;
+        cpu.a = val;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b1 || b2 { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ADCr_b
     |cpu: &mut Z80| {}, //ADCr_c
     |cpu: &mut Z80| {}, //ADCr_d
     |cpu: &mut Z80| {}, //ADCr_e
@@ -507,14 +516,55 @@ static isa_map: [fn(&mut Z80); 256] = [
     |cpu: &mut Z80| {}, //SBCr_a
 
     //a0
-    |cpu: &mut Z80| {}, //ANDr_b
-    |cpu: &mut Z80| {}, //ANDr_c
-    |cpu: &mut Z80| {}, //ANDr_d
-    |cpu: &mut Z80| {}, //ANDr_e
-    |cpu: &mut Z80| {}, //ANDr_h
-    |cpu: &mut Z80| {}, //ANDr_l
-    |cpu: &mut Z80| {}, //ANDHL
-    |cpu: &mut Z80| {}, //ANDr_a
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.b;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_b
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.c;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_c
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.d;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_d
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.e;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_e
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.h;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_h
+    |cpu: &mut Z80| {
+        cpu.a &= cpu.l;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_l
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        cpu.a &= mem_access_b!(cpu.memory_unit, address);
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ANDHL
+    |cpu: &mut Z80| {
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //ANDr_a
     |cpu: &mut Z80| {
         cpu.a ^= cpu.b;
         cpu.f = 0;
