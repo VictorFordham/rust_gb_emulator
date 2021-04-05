@@ -107,10 +107,37 @@ static isa_map: [fn(&mut Z80); 256] = [
         cpu.pc = cpu.pc.wrapping_add(1);
         cpu.last_m = 2; cpu.last_t = 8;
     }, //LDrn_b
-    |cpu: &mut Z80| {}, //RLCA
-    |cpu: &mut Z80| {}, //LDmmSP
-    |cpu: &mut Z80| {}, //ADDHLBC
-    |cpu: &mut Z80| {}, //LDABCm
+    |cpu: &mut Z80| {
+        let ci = (cpu.a & 0x80 != 0) as u8;
+        let co = (cpu.a & 0x80 != 0) as u8 * 0x10;
+        cpu.a = ci.wrapping_add(cpu.a << 1);
+        cpu.f = co.wrapping_add(cpu.f & 0xef);
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //RLCA
+    |cpu: &mut Z80| { //the guy never implmented this, just my guess at what it would be
+        let address = mem_access_w!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(2);
+        mem_access_w!(cpu.memory_unit, address, cpu.sp);
+        cpu.last_m = 5; cpu.last_t = 20;
+    }, //LDmmSP
+    |cpu: &mut Z80| {
+        let hl = (cpu.h as u16 << 8) + cpu.l as u16;
+        let bc = (cpu.b as u16 << 8) + cpu.c as u16;
+        let (i, b) hl.overflowing_add(bc);
+        if b {
+            cpu.f |= CARRY_FLAG;
+        } else {
+            cpu.f &= (0xff - CARRY_FLAG);
+        }
+        cpu.h = hl >> 8 as u8;
+        cpu.l = hl & 0xff as u8;
+        cpu.last_m = 3; cpu.last_t = 12;
+    }, //ADDHLBC
+    |cpu: &mut Z80| {
+        let address = (cpu.b as u16 << 8) + cpu.c as u16;
+        cpu.a = mem_access_b!(cpu.memory_unit, address);
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //LDABCm
     |cpu: &mut Z80| {
         cpu.c = cpu.c.wrapping_sub(1); if cpu.c == 0xff { cpu.b = cpu.b.wrapping_sub(1); }
         cpu.last_m = 1; cpu.last_t = 4;
@@ -127,8 +154,18 @@ static isa_map: [fn(&mut Z80); 256] = [
         if cpu.c == 0 { cpu.f |= ZERO_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //DECr_c
-    |cpu: &mut Z80| {}, //LDrn_c
-    |cpu: &mut Z80| {}, //RRCA
+    |cpu: &mut Z80| {
+        cpu.c = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //LDrn_c
+    |cpu: &mut Z80| {
+        let ci = (cpu.a & 1 != 0) as u8 * 0x80;
+        let co = (cpu.a & 1 != 0) as u8 * 0x10;
+        cpu.a = ci.wrapping_add(cpu.a >> 1);
+        cpu.f = (cpu.f & (0xff - CARRY_FLAG)) + co;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //RRCA
 
     //10
     |cpu: &mut Z80| {}, //DJNZn
@@ -611,20 +648,97 @@ static isa_map: [fn(&mut Z80); 256] = [
         if b { cpu.f |= CARRY_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //SUBr_l
-    |cpu: &mut Z80| {}, //SUBHL
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        let val = mem_access_b!(cpu.memory_unit, address);
+        let (i, b) = cpu.a.overflowing_sub(val);
+        cpu.a = i;
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //SUBHL
     |cpu: &mut Z80| {
         cpu.f = SUB_FLAG;
         if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //SUBr_a
-    |cpu: &mut Z80| {}, //SBCr_b
-    |cpu: &mut Z80| {}, //SBCr_c
-    |cpu: &mut Z80| {}, //SBCr_d
-    |cpu: &mut Z80| {}, //SBCr_e
-    |cpu: &mut Z80| {}, //SBCr_h
-    |cpu: &mut Z80| {}, //SBCr_l
-    |cpu: &mut Z80| {}, //SBCHL
-    |cpu: &mut Z80| {}, //SBCr_a
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.b);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_b
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.c);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_c
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.d);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_d
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.e);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_e
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.h);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_h
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.l);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_l
+    |cpu: &mut Z80| {
+        let mut address = cpu.h as u16 << 8;
+        address += cpu.l as u16;
+        let i = mem_access_b!(cpu.memory_unit, address);
+        let (mut val, b) = cpu.a.overflowing_sub(i);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCHL
+    |cpu: &mut Z80| {
+        let (mut val, b) = cpu.a.overflowing_sub(cpu.a);
+        if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+        cpu.f = SUB_FLAG;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+        cpu.a = val;
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //SBCr_a
 
     //a0
     |cpu: &mut Z80| {
