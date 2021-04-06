@@ -168,14 +168,29 @@ static isa_map: [fn(&mut Z80); 256] = [
     }, //RRCA
 
     //10
-    |cpu: &mut Z80| {}, //DJNZn
-    |cpu: &mut Z80| {}, //LDDEnn
-    |cpu: &mut Z80| { //LDDEmA
+    |cpu: &mut Z80| {
+        cpu.last_m = 2; cpu.last_t = 8;
+        let offset = mem_access_b!(cpu.memory_unit, cpu.pc) as i8;
+        cpu.pc = cpu.pc.wrapping_add(1);
+        cpu.b = cpu.b.wrapping_sub(1);
+        if cpu.b != 0 {
+            cpu.pc = (cpu.pc as i16).wrapping_add(offset as i16) as u16;
+            cpu.last_m += 1;
+            cpu.last_t += 4;
+        }
+    }, //DJNZn
+    |cpu: &mut Z80| {
+        cpu.e = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.d = mem_access_b!(cpu.memory_unit, cpu.pc.wrapping_add(1));
+        cpu.pc = cpu.pc.wrapping_add(2);
+        cpu.last_m = 3; cpu.last_t = 12;
+    }, //LDDEnn
+    |cpu: &mut Z80| {
         let mut address: usize = cpu.d as usize;
         address = (address << 8) + cpu.e as usize;
         mem_access_b!(cpu.memory_unit, address, cpu.a);
         cpu.last_m = 2; cpu.last_t = 8;
-    },
+    }, //LDDEmA
     |cpu: &mut Z80| {
         cpu.e = cpu.e.wrapping_add(1);
         if cpu.e == 0 { cpu.d = cpu.d.wrapping_add(1); }
@@ -193,21 +208,39 @@ static isa_map: [fn(&mut Z80); 256] = [
         if cpu.d == 0 { cpu.f |= ZERO_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //DECr_d
-    |cpu: &mut Z80| {}, //LDrn_d
-    |cpu: &mut Z80| {}, //RLA
+    |cpu: &mut Z80| {
+        cpu.d = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //LDrn_d
+    |cpu: &mut Z80| {
+        let ci = (cpu.f & CARRY_FLAG != 0) as u8;
+        let co = (cpu.a & 0x80 != 0) as u8 * 0x10;
+        cpu.a = ci.wrapping_add(cpu.a << 1);
+        cpu.f = co.wrapping_add(cpu.f & 0xef);
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //RLA
     |cpu: &mut Z80| {
         let offset = mem_access_b!(cpu.memory_unit, cpu.pc);
         cpu.pc += 1;
         cpu.pc = (cpu.pc as i16 + (offset as i8) as i16) as u16;
         cpu.last_m = 3; cpu.last_t = 12;
     }, //JRn
-    |cpu: &mut Z80| {}, //ADDHLDE
-    |cpu: &mut Z80| { //LDADEm
+    |cpu: &mut Z80| {
+        let hl: u16 = (cpu.h as u16 << 8) + cpu.l as u16;
+        let de: u16 = (cpu.d as u16 << 8) + cpu.e as u16;
+        let (i, b) = hl.overflowing_add(de);
+        cpu.h = (i >> 8) as u8;
+        cpu.l = (i & 0xff) as u8;
+        if b { cpu.f |= CARRY_FLAG; } else { cpu.f &= 0xff - CARRY_FLAG; }
+        cpu.last_m = 3; cpu.last_t = 12;
+    }, //ADDHLDE
+    |cpu: &mut Z80| {
         let mut address: usize = cpu.d as usize;
         address = (address << 8) + cpu.e as usize;
         cpu.a = mem_access_b!(cpu.memory_unit, address);
         cpu.last_m = 2; cpu.last_t = 8;
-    },
+    }, //LDADEm
     |cpu: &mut Z80| {
         cpu.e = cpu.e.wrapping_sub(1);
         if cpu.e == 0xff { cpu.d = cpu.d.wrapping_sub(1); }
@@ -225,8 +258,18 @@ static isa_map: [fn(&mut Z80); 256] = [
         if cpu.e == 0 { cpu.f |= ZERO_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //DECr_e
-    |cpu: &mut Z80| {}, //LDrn_e
-    |cpu: &mut Z80| {}, //RRA
+    |cpu: &mut Z80| {
+        cpu.e = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //LDrn_e
+    |cpu: &mut Z80| {
+        let ci = (cpu.f & CARRY_FLAG != 0) as u8 * 0x80;
+        let co = (cpu.a & 1 != = 0) as u8 0x10;
+        cpu.a = ci.wrapping_add(cpu.a >> 1);
+        cpu.f = co.wrapping_add(cpu.f & 0xef);
+        cpu.last_m = 1; cpu.last_t = 4;
+    }, //RRA
 
     //20
     |cpu: &mut Z80| {}, //JRNZn
