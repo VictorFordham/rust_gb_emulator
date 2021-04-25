@@ -662,7 +662,15 @@ static isa_map: [fn(&mut Z80); 256] = [
         if b { cpu.f |= CARRY_FLAG; }
         cpu.last_m = 1; cpu.last_t = 4;
     }, //ADDr_l
-    |cpu: &mut Z80| {}, //ADDHL
+    |cpu: &mut Z80| {
+        let address = (cpu.h as u16 << 8) + cpu.l as u16;
+        let (val, b) = cpu.a.overflowing_add(mem_access_b!(cpu.memory_unit, address));
+        cpu.a = val;
+        cpu.f = 0;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        if b { cpu.f |= CARRY_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ADDHL
     |cpu: &mut Z80| {
         let (val, b) = cpu.a.overfowing_add(cpu.a);
         cpu.a = val;
