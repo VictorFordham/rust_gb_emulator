@@ -1,3 +1,6 @@
+/*
+CPU implementation based on: http://imrannazar.com/content/files/jsgb.z80.js
+*/
 use crate::mmu::MMU;
 use crate::{ mem_access_w, mem_access_b };
 
@@ -1176,7 +1179,36 @@ static isa_map: [fn(&mut Z80); 256] = [
             cpu.last_m += 1; cpu.last_t += 4;
         } else { cpu.pc = cpu.pc.wrapping_add(2); }
     }, //JPZnn
-    |cpu: &mut Z80| {}, //MAPcb
+    |cpu: &mut Z80| {
+        let val = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        if val < 0x40 {
+            map_table[val as usize](cpu);
+        } else if val < 0x80 {
+            const handlers: [fn(&mut Z80, u8); 8] = [
+                |c, i| -> { if c.b & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> { if c.c & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> { if c.d & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> { if c.e & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> { if c.h & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> { if c.l & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; },
+                |c, i| -> {
+                    let addr = (cpu.h as u16 << 8) + cpu.l as u16;
+                    let j = mem_access_b!(cpu.memory_unit, addr);
+                    if j & (1 << i) == 0 { c.f |= ZERO_FLAG; }
+                    cpu.last_m = 3; cpu.last_t = 12;
+                },
+                |c, i| -> { if c.a & (1 << i) == 0 { c.f |= ZERO_FLAG; } cpu.last_m = 2; cpu.last_t = 8; }
+            ];
+
+            cpu.f = 0;
+            let i: u8 = (val & 0b111000) >> 3;
+            let index: usize = val as usize & 0b111;
+            handlers[index](cpu, i);
+        } else {
+            undefined(cpu.pc);
+        }
+    }, //MAPcb
     |cpu: &mut Z80| {
         cpu.last_m = 3; cpu.last_t = 12;
         if cpu.f & ZERO_FLAG == ZERO_FLAG {
@@ -1395,4 +1427,79 @@ static isa_map: [fn(&mut Z80); 256] = [
         cpu.pc = 0x38;
         cpu.last_m = 3; cpu.last_t = 12;
     }  //RST38
+];
+
+static map_table: [fn(&mut Z80); 128] = [
+
+    //00
+    |cpu: &mut Z80| {}, //RLCr_b
+    |cpu: &mut Z80| {}, //RLCr_c
+    |cpu: &mut Z80| {}, //RLCr_d
+    |cpu: &mut Z80| {}, //RLCr_e
+    |cpu: &mut Z80| {}, //RLCr_h
+    |cpu: &mut Z80| {}, //RLCr_l
+    |cpu: &mut Z80| {}, //RLCHL
+    |cpu: &mut Z80| {}, //RLCr_a
+    |cpu: &mut Z80| {}, //RRCr_b
+    |cpu: &mut Z80| {}, //RRCr_c
+    |cpu: &mut Z80| {}, //RRCr_d
+    |cpu: &mut Z80| {}, //RRCr_e
+    |cpu: &mut Z80| {}, //RRCr_h
+    |cpu: &mut Z80| {}, //RRCr_l
+    |cpu: &mut Z80| {}, //RRCHL
+    |cpu: &mut Z80| {}, //RRCr_a
+
+    //10
+    |cpu: &mut Z80| {}, //RLr_b
+    |cpu: &mut Z80| {}, //RLr_c
+    |cpu: &mut Z80| {}, //RLr_d
+    |cpu: &mut Z80| {}, //RLr_e
+    |cpu: &mut Z80| {}, //RLr_h
+    |cpu: &mut Z80| {}, //RLr_l
+    |cpu: &mut Z80| {}, //RLHL
+    |cpu: &mut Z80| {}, //RLr_a
+    |cpu: &mut Z80| {}, //RRr_b
+    |cpu: &mut Z80| {}, //RRr_c
+    |cpu: &mut Z80| {}, //RRr_d
+    |cpu: &mut Z80| {}, //RRr_e
+    |cpu: &mut Z80| {}, //RRr_h
+    |cpu: &mut Z80| {}, //RRr_l
+    |cpu: &mut Z80| {}, //RRHL
+    |cpu: &mut Z80| {}, //RRr_a
+
+    //20
+    |cpu: &mut Z80| {}, //SLAr_b
+    |cpu: &mut Z80| {}, //SLAr_c
+    |cpu: &mut Z80| {}, //SLAr_d
+    |cpu: &mut Z80| {}, //SLAr_e
+    |cpu: &mut Z80| {}, //SLAr_h
+    |cpu: &mut Z80| {}, //SLAr_l
+    |cpu: &mut Z80| { undefined(cpu.pc); },
+    |cpu: &mut Z80| {}, //SLAr_a
+    |cpu: &mut Z80| {}, //SRAr_b
+    |cpu: &mut Z80| {}, //SRAr_c
+    |cpu: &mut Z80| {}, //SRAr_d
+    |cpu: &mut Z80| {}, //SRAr_e
+    |cpu: &mut Z80| {}, //SRAr_h
+    |cpu: &mut Z80| {}, //SRAr_l
+    |cpu: &mut Z80| { undefined(cpu.pc); },
+    |cpu: &mut Z80| {}, //SRAr_a
+
+    //30
+    |cpu: &mut Z80| {}, //SWAPr_b
+    |cpu: &mut Z80| {}, //SWAPr_c
+    |cpu: &mut Z80| {}, //SWAPr_d
+    |cpu: &mut Z80| {}, //SWAPr_e
+    |cpu: &mut Z80| {}, //SWAPr_h
+    |cpu: &mut Z80| {}, //SWAPr_l
+    |cpu: &mut Z80| { undefined(cpu.pc); },
+    |cpu: &mut Z80| {}, //SWAPr_a
+    |cpu: &mut Z80| {}, //SRLr_b
+    |cpu: &mut Z80| {}, //SRLr_c
+    |cpu: &mut Z80| {}, //SRLr_d
+    |cpu: &mut Z80| {}, //SRLr_e
+    |cpu: &mut Z80| {}, //SRLr_h
+    |cpu: &mut Z80| {}, //SRLr_l
+    |cpu: &mut Z80| { undefined(cpu.pc); },
+    |cpu: &mut Z80| {} //SRLr_a
 ];
