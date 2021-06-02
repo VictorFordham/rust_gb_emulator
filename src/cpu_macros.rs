@@ -120,6 +120,66 @@ macro_rules! ORr_x {
 }
 
 #[macro_export]
+macro_rules! RLCr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let carry = (cpu.$reg & 0x80 != 0) as u8;
+            cpu.f = 0;
+            if cpu.$reg & 0x80 != 0 { cpu.f |= CARRY_FLAG; }
+            cpu.$reg <<= 1;
+            cpu.$reg |= carry;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 2; cpu.last_t = 8;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! RLr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let carry = (cpu.f & CARRY_FLAG != 0) as u8;
+            cpu.f = 0;
+            if cpu.$reg & 1 != 0 { cpu.f |= CARRY_FLAG; }
+            cpu.$reg <<= 1;
+            cpu.$reg |= carry;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 2; cpu.last_t = 8;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! RRCr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let carry = ((cpu.$reg & 1 != 0) as u8) * 0x80;
+            cpu.f = 0;
+            if cpu.$reg & 1 != 0 { cpu.f |= CARRY_FLAG; }
+            cpu.$reg >>= 1;
+            cpu.$reg |= carry;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 2; cpu.last_t = 8;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! RRr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let val = ((cpu.f & CARRY_FLAG != 0) as u8) * 0x80;
+            cpu.f = 0;
+            if cpu.$reg & 1 != 0 { cpu.f |= CARRY_FLAG; }
+            cpu.$reg >>= 1;
+            cpu.$reg |= val;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 2; cpu.last_t = 8;
+        }
+    }
+}
+
+#[macro_export]
 macro_rules! RSTx {
     ($offset:expr) => {
         |cpu: &mut Z80| {
@@ -142,6 +202,19 @@ macro_rules! SBCr_x {
             if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
             cpu.a = val;
             cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! SLAr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            cpu.f = 0;
+            if cpu.$reg & 0x80 != 0 { cpu.f |= CARRY_FLAG; }
+            cpu.$reg <<= 1;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 2; cpu.last_t = 8;
         }
     }
 }

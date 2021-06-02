@@ -4,7 +4,8 @@ CPU implementation based on: http://imrannazar.com/content/files/jsgb.z80.js
 use crate::mmu::MMU;
 use crate::{
     ADCr_x, ADDr_x, ANDr_x, CPr_x, DECr_x, INCr_x, LDHLmr_x, LDrHLm_x, LDrr_xx, ORr_x,
-    RSTx, SBCr_x, SRAr_x, SRLr_x, SUBr_x, SWAPr_x, undefined, XORr_x,
+    RLCr_x, RRCr_x, RLr_x, RRr_x, RSTx, SBCr_x, SLAr_x, SRAr_x, SRLr_x, SUBr_x,
+    SWAPr_x, undefined, XORr_x,
 };
 use crate::{ mem_access_w, mem_access_b };
 
@@ -738,7 +739,19 @@ static isa_map: [fn(&mut Z80); 256] = [
         cpu.pc = mem_access_w!(cpu.memory_unit, cpu.pc);
         cpu.last_m = 5; cpu.last_t = 20;
     }, //CALLnn
-    |cpu: &mut Z80| {}, //ADCn
+    |cpu: &mut Z80| {
+        let val = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        let old = cpu.a;
+        cpu.a = cpu.a.wrapping_add(val);
+        if cpu.f & CARRY_FLAG != 0 {
+            cpu.a = cpu.a.wrapping_add(1);
+        }
+        cpu.f = 0;
+        if cpu.a <= old { cpu.f |= CARRY_FLAG; }
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
+    }, //ADCn
     RSTx!(0x08), //RST08
 
     //d0
@@ -822,7 +835,17 @@ static isa_map: [fn(&mut Z80); 256] = [
     }, //CALLCnn
     undefined!(),
     |cpu: &mut Z80| {
-        
+        let val = mem_access_b!(cpu.memory_unit, cpu.pc);
+        cpu.pc = cpu.pc.wrapping_add(1);
+        let (mut i, b) = cpu.a.overflowing_sub(val);
+        if cpu.f & CARRY_FLAG != 0 {
+            i = i.wrapping_sub(1);
+        }
+        cpu.f = SUB_FLAG;
+        if b || cpu.a < i { cpu.f |= CARRY_FLAG; }
+        cpu.a = i;
+        if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+        cpu.last_m = 2; cpu.last_t = 8;
     }, //SBCn
     RSTx!(0x18), //RST18
 
@@ -956,50 +979,94 @@ static isa_map: [fn(&mut Z80); 256] = [
 static map_table: [fn(&mut Z80); 64] = [
 
     //00
-    |cpu: &mut Z80| {}, //RLCr_b
-    |cpu: &mut Z80| {}, //RLCr_c
-    |cpu: &mut Z80| {}, //RLCr_d
-    |cpu: &mut Z80| {}, //RLCr_e
-    |cpu: &mut Z80| {}, //RLCr_h
-    |cpu: &mut Z80| {}, //RLCr_l
-    |cpu: &mut Z80| {}, //RLCHL
-    |cpu: &mut Z80| {}, //RLCr_a
-    |cpu: &mut Z80| {}, //RRCr_b
-    |cpu: &mut Z80| {}, //RRCr_c
-    |cpu: &mut Z80| {}, //RRCr_d
-    |cpu: &mut Z80| {}, //RRCr_e
-    |cpu: &mut Z80| {}, //RRCr_h
-    |cpu: &mut Z80| {}, //RRCr_l
-    |cpu: &mut Z80| {}, //RRCHL
-    |cpu: &mut Z80| {}, //RRCr_a
+    RLCr_x!(b), //RLCr_b
+    RLCr_x!(c), //RLCr_c
+    RLCr_x!(d), //RLCr_d
+    RLCr_x!(e), //RLCr_e
+    RLCr_x!(h), //RLCr_h
+    RLCr_x!(l), //RLCr_l
+    |cpu: &mut Z80| {
+        let address = ((cpu.h as u16) << 8) + (cpu.l as u16);
+        let mut val = mem_access_b!(cpu.memory_unit, address);
+        let carry = (val & 0x80 != 0) as u8;
+        cpu.f = 0;
+        if val & 0x80 != 0 { cpu.f |= CARRY_FLAG; }
+        val <<= 1;
+        val |= carry;
+        if val == 0 { cpu.f |= ZERO_FLAG; }
+        mem_access_b!(cpu.memory_unit, address, val);
+        cpu.last_m = 4; cpu.last_t = 16;
+    }, //RLCHL
+    RLCr_x!(a), //RLCr_a
+    RRCr_x!(b), //RRCr_b
+    RRCr_x!(c), //RRCr_c
+    RRCr_x!(d), //RRCr_d
+    RRCr_x!(e), //RRCr_e
+    RRCr_x!(h), //RRCr_h
+    RRCr_x!(l), //RRCr_l
+    |cpu: &mut Z80| {
+        let address = ((cpu.h as u16) << 8) + (cpu.l as u16);
+        let mut val = mem_access_b!(cpu.memory_unit, address);
+        let carry = ((val & 1 != 0) as u8) * 0x80;
+        cpu.f = 0;
+        if val & 1 != 0 { cpu.f |= CARRY_FLAG; }
+        val >>= 1;
+        val |= carry;
+        if val == 0 { cpu.f |= ZERO_FLAG; }
+        mem_access_b!(cpu.memory_unit, address, val);
+        cpu.last_m = 4; cpu.last_t = 16;
+    }, //RRCHL
+    RRCr_x!(a), //RRCr_a
 
     //10
-    |cpu: &mut Z80| {}, //RLr_b
-    |cpu: &mut Z80| {}, //RLr_c
-    |cpu: &mut Z80| {}, //RLr_d
-    |cpu: &mut Z80| {}, //RLr_e
-    |cpu: &mut Z80| {}, //RLr_h
-    |cpu: &mut Z80| {}, //RLr_l
-    |cpu: &mut Z80| {}, //RLHL
-    |cpu: &mut Z80| {}, //RLr_a
-    |cpu: &mut Z80| {}, //RRr_b
-    |cpu: &mut Z80| {}, //RRr_c
-    |cpu: &mut Z80| {}, //RRr_d
-    |cpu: &mut Z80| {}, //RRr_e
-    |cpu: &mut Z80| {}, //RRr_h
-    |cpu: &mut Z80| {}, //RRr_l
-    |cpu: &mut Z80| {}, //RRHL
-    |cpu: &mut Z80| {}, //RRr_a
+    RLr_x!(b), //RLr_b
+    RLr_x!(c), //RLr_c
+    RLr_x!(d), //RLr_d
+    RLr_x!(e), //RLr_e
+    RLr_x!(h), //RLr_h
+    RLr_x!(l), //RLr_l
+    |cpu: &mut Z80| {
+        let address = ((cpu.h as u16) << 8) + (cpu.l as u16);
+        let mut val = mem_access_b!(cpu.memory_unit, address);
+        let carry = (cpu.f & CARRY_FLAG != 0) as u8;
+        cpu.f = 0;
+        if val & 0x80 != 0 { cpu.f |= CARRY_FLAG; }
+        val <<= 1;
+        val |= carry;
+        if val == 0 { cpu.f |= ZERO_FLAG; }
+        mem_access_b!(cpu.memory_unit, address, val);
+        cpu.last_m = 4; cpu.last_t = 16;
+    }, //RLHL
+    RLr_x!(a), //RLr_a
+    RRr_x!(b), //RRr_b
+    RRr_x!(c), //RRr_c
+    RRr_x!(d), //RRr_d
+    RRr_x!(e), //RRr_e
+    RRr_x!(h), //RRr_h
+    RRr_x!(l), //RRr_l
+    |cpu: &mut Z80| {
+        let address = ((cpu.h as u16) << 8) + (cpu.l as u16);
+        let mut val = mem_access_b!(cpu.memory_unit, address);
+        let bit = ((cpu.f & CARRY_FLAG != 0) as u8) * 0x80;
+        cpu.f = 0;
+        if val & 1 != 0 { cpu.f |= CARRY_FLAG; }
+        val >>= 1;
+        val |= bit;
+        if val == 0 { cpu.f |= ZERO_FLAG; }
+        mem_access_b!(cpu.memory_unit, address, val);
+        cpu.last_m = 4; cpu.last_t = 16;
+    }, //RRHL
+    RRr_x!(a), //RRr_a
 
     //20
-    |cpu: &mut Z80| {}, //SLAr_b
-    |cpu: &mut Z80| {}, //SLAr_c
-    |cpu: &mut Z80| {}, //SLAr_d
-    |cpu: &mut Z80| {}, //SLAr_e
-    |cpu: &mut Z80| {}, //SLAr_h
-    |cpu: &mut Z80| {}, //SLAr_l
+    SLAr_x!(b), //SLAr_b
+    SLAr_x!(c), //SLAr_c
+    SLAr_x!(d), //SLAr_d
+    SLAr_x!(e), //SLAr_e
+    SLAr_x!(h), //SLAr_h
+    SLAr_x!(l), //SLAr_l
     undefined!(),
-    |cpu: &mut Z80| {}, //SLAr_a
+    SLAr_x!(a), //SLAr_a
     SRAr_x!(b), //SRAr_b
     SRAr_x!(c), //SRAr_c
     SRAr_x!(d), //SRAr_d
