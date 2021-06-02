@@ -1,4 +1,5 @@
 mod mmu;
+mod cpu_macros;
 mod cpu;
 
 fn main() {
