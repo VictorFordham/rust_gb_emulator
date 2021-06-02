@@ -1,4 +1,19 @@
 #[macro_export]
+macro_rules! ADCr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let (mut val, b) = cpu.a.overflowing_add(cpu.$reg);
+            if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_add(1); }
+            cpu.f = 0;
+            if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+            if b || cpu.a > val { cpu.f |= CARRY_FLAG; }
+            cpu.a = val;
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
 macro_rules! ADDr_x {
     ($reg:ident) => {
         |cpu: &mut Z80| {
@@ -19,6 +34,43 @@ macro_rules! ANDr_x {
             cpu.a &= cpu.$reg;
             cpu.f = 0;
             if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! CPr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let (i, b) = cpu.a.overflowing_sub(cpu.$reg);
+            cpu.f = SUB_FLAG;
+            if i == 0 { cpu.f |= ZERO_FLAG; }
+            if b { cpu.f |= CARRY_FLAG; }
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! DECr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            cpu.$reg = cpu.$reg.wrapping_sub(1);
+            cpu.f = 0;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! INCr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            cpu.$reg = cpu.$reg.wrapping_add(1);
+            cpu.f = 0;
+            if cpu.$reg == 0 { cpu.f |= ZERO_FLAG; }
             cpu.last_m = 1; cpu.last_t = 4;
         }
     }
@@ -56,6 +108,45 @@ macro_rules! LDrr_xx {
 }
 
 #[macro_export]
+macro_rules! ORr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            cpu.a |= cpu.$reg;
+            cpu.f = 0;
+            if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! RSTx {
+    ($offset:expr) => {
+        |cpu: &mut Z80| {
+            cpu.sp = cpu.sp.wrapping_sub(2);
+            mem_access_w!(cpu.memory_unit, cpu.sp, cpu.pc);
+            cpu.pc = $offset;
+            cpu.last_m = 3; cpu.last_t = 12;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! SBCr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let (mut val, b) = cpu.a.overflowing_sub(cpu.$reg);
+            if cpu.f & CARRY_FLAG != 0 { val = val.wrapping_sub(1); }
+            cpu.f = SUB_FLAG;
+            if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+            if b || cpu.a < val { cpu.f |= CARRY_FLAG; }
+            cpu.a = val;
+            cpu.last_m = 1; cpu.last_t = 4;
+        }
+    }
+}
+
+#[macro_export]
 macro_rules! SRAr_x {
     ($reg:ident) => {
         |cpu: &mut Z80| { 
@@ -77,11 +168,25 @@ macro_rules! SRAr_x {
 macro_rules! SRLr_x {
     ($reg:ident) => {
         |cpu: &mut Z80| { 
-        cpu.f = 0;
-        if cpu.$reg >> 1 == 0 { cpu.f = ZERO_FLAG; }
-        if cpu.$reg & 1 != 0 { cpu.f |= CARRY_FLAG;}
-        cpu.$reg >>= 1;
-        cpu.last_m = 2; cpu.last_t = 8;
+            cpu.f = 0;
+            if cpu.$reg >> 1 == 0 { cpu.f = ZERO_FLAG; }
+            if cpu.$reg & 1 != 0 { cpu.f |= CARRY_FLAG;}
+            cpu.$reg >>= 1;
+            cpu.last_m = 2; cpu.last_t = 8;
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! SUBr_x {
+    ($reg:ident) => {
+        |cpu: &mut Z80| {
+            let (val, b) = cpu.a.overflowing_sub(cpu.$reg);
+            cpu.a = val;
+            cpu.f = SUB_FLAG;
+            if cpu.a == 0 { cpu.f |= ZERO_FLAG; }
+            if b { cpu.f |= CARRY_FLAG; }
+            cpu.last_m = 1; cpu.last_t = 4;
         }
     }
 }
